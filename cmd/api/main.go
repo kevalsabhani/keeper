@@ -3,39 +3,48 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/kevalsabhani/keeper/internal/configs"
+	"github.com/kevalsabhani/keeper/internal/database"
+	"github.com/kevalsabhani/keeper/internal/handlers"
+	"github.com/kevalsabhani/keeper/internal/models"
+	"github.com/kevalsabhani/keeper/internal/repositories"
+	"github.com/kevalsabhani/keeper/internal/services"
 )
 
-// Models
-type User struct {
-	ID    int
-	Name  string
-	Email string
-}
-
-type Note struct {
-	ID      int
-	UserID  int
-	Title   string
-	Content string
-}
-
 // In-memory stores
-var userStore = map[int]User{
-	1: User{1, "Alice", "alice@ex.com"},
-	2: User{2, "Bob", "bob@ex.com"},
+var userStore = map[int]models.User{
+	1: models.User{1, "Alice", "alice@ex.com"},
+	2: models.User{2, "Bob", "bob@ex.com"},
 }
 
-var noteStore = map[int]Note{
-	1: Note{1, 2, "keeper api key", "fjalkdfjldfjlsjf"},
-	2: Note{2, 1, "aws secrets", "kadsfjdslfjlskdfjlksd"},
+var noteStore = map[int]models.Note{
+	1: models.Note{1, 2, "keeper api key", "fjalkdfjldfjlsjf"},
+	2: models.Note{2, 1, "aws secrets", "kadsfjdslfjlskdfjlksd"},
 }
 
 func main() {
+
+	config := configs.Load()
+
+	db, err := database.New(config)
+	if err != nil {
+		log.Fatalf("Unable to connect to database: %v", err)
+	}
+
+	userRepo := repositories.NewPostgresUserRepository(db)
+	userService := services.NewUserService(userRepo)
+	userHandler := handlers.NewUserHandler(userService)
+
+	noteRepo := repositories.NewPostgresNoteRepository(db)
+	noteService := services.NewNoteService(noteRepo)
+	noteHandler := handlers.NewNoteHandler(noteService)
+
 	r := chi.NewRouter()
 
 	// Middlewares
@@ -48,7 +57,7 @@ func main() {
 
 	// User routes
 	userRoutes := func(r chi.Router) {
-		r.Post("/", handleCreateUser)
+		r.Post("/", userHandler.Create)
 		r.Get("/", handleListUsers)
 		r.Get("/{id}", handleGetUser)
 		r.Put("/{id}", handleUpdateUser)
@@ -57,7 +66,7 @@ func main() {
 
 	// Note routes
 	noteRoutes := func(r chi.Router) {
-		r.Post("/", handleCreateNote)
+		r.Post("/", noteHandler.Create)
 		r.Get("/", handleListNotes)
 		r.Get("/{id}", handleGetNote)
 		r.Put("/{id}", handleUpdateNote)
@@ -83,7 +92,7 @@ func main() {
 	})
 
 	fmt.Println("Server Running on :3000")
-	http.ListenAndServe(":3000", r)
+	http.ListenAndServe(fmt.Sprintf(":%s", config.Port), r)
 }
 
 func handleHome(w http.ResponseWriter, r *http.Request) {
@@ -103,7 +112,7 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 
 func handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	var user User
+	var user models.User
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -114,7 +123,11 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newID := len(userStore) + 1
-	userStore[newID] = User{newID, user.Name, user.Email}
+	userStore[newID] = models.User{
+		ID:    newID,
+		Name:  user.Name,
+		Email: user.Email,
+	}
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]any{
@@ -124,7 +137,7 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request) {
 
 func handleListUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	userList := make([]User, 0, len(userStore))
+	userList := make([]models.User, 0, len(userStore))
 	for _, user := range userStore {
 		userList = append(userList, user)
 	}
@@ -170,7 +183,7 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var payload User
+	var payload models.User
 	err = json.NewDecoder(r.Body).Decode(&payload)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -228,7 +241,7 @@ func handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 func handleCreateNote(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var note Note
+	var note models.Note
 
 	err := json.NewDecoder(r.Body).Decode(&note)
 	if err != nil {
@@ -251,7 +264,7 @@ func handleCreateNote(w http.ResponseWriter, r *http.Request) {
 func handleListNotes(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	noteList := make([]Note, 0, len(noteStore))
+	noteList := make([]models.Note, 0, len(noteStore))
 
 	for _, note := range noteStore {
 		noteList = append(noteList, note)
@@ -299,7 +312,7 @@ func handleUpdateNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var payload Note
+	var payload models.Note
 	err = json.NewDecoder(r.Body).Decode(&payload)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
