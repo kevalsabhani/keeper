@@ -47,11 +47,32 @@ func main() {
 	r.Get("/health", handleHealth)
 
 	// User routes
-	r.Post("/users", handleCreateUser)
-	r.Get("/users", handleListUsers)
-	r.Get("/users/{id}", handleGetUser)
-	r.Put("/users/{id}", handleUpdateUser)
-	r.Delete("/users/{id}", handleDeleteUser)
+	userRoutes := func(r chi.Router) {
+		r.Post("/", handleCreateUser)
+		r.Get("/", handleListUsers)
+		r.Get("/{id}", handleGetUser)
+		r.Put("/{id}", handleUpdateUser)
+		r.Delete("/{id}", handleDeleteUser)
+	}
+
+	// Note routes
+	noteRoutes := func(r chi.Router) {
+		r.Post("/", handleCreateNote)
+		r.Get("/", handleListNotes)
+		r.Get("/{id}", handleGetNote)
+		r.Put("/{id}", handleUpdateNote)
+		r.Delete("/{id}", handleDeleteNote)
+	}
+
+	// v1 routes
+	v1Routes := func(r chi.Router) {
+		r.Route("/users", userRoutes)
+		r.Route("/notes", noteRoutes)
+	}
+
+	r.Route("/api", func(r chi.Router) {
+		r.Route("/v1", v1Routes)
+	})
 
 	// 404 handler
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +86,6 @@ func main() {
 	http.ListenAndServe(":3000", r)
 }
 
-// Handlers
 func handleHome(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
@@ -78,6 +98,8 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
 }
+
+// -----------------  User Handlers  -----------------
 
 func handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -199,5 +221,134 @@ func handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	delete(userStore, id)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// -----------------  Note Handlers  -----------------
+func handleCreateNote(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var note Note
+
+	err := json.NewDecoder(r.Body).Decode(&note)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "invalid request payload",
+		})
+		return
+	}
+
+	newID := len(noteStore) + 1
+	note.ID = newID
+	noteStore[newID] = note
+
+	json.NewEncoder(w).Encode(map[string]any{
+		"data": note,
+	})
+}
+
+func handleListNotes(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	noteList := make([]Note, 0, len(noteStore))
+
+	for _, note := range noteStore {
+		noteList = append(noteList, note)
+	}
+
+	json.NewEncoder(w).Encode(map[string]any{
+		"data": noteList,
+	})
+}
+
+func handleGetNote(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "invalid note ID",
+		})
+		return
+	}
+
+	note, exists := noteStore[id]
+	if !exists {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "note not found",
+		})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]any{
+		"data": note,
+	})
+}
+
+func handleUpdateNote(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "invalid note ID",
+		})
+		return
+	}
+
+	var payload Note
+	err = json.NewDecoder(r.Body).Decode(&payload)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "invalid request payload",
+		})
+		return
+	}
+
+	note, exists := noteStore[id]
+	if !exists {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "user not found",
+		})
+		return
+	}
+
+	note.Title = payload.Title
+	note.Content = payload.Content
+
+	noteStore[id] = note
+
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Note updated.",
+	})
+}
+
+func handleDeleteNote(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "invalid note ID",
+		})
+		return
+	}
+
+	_, exists := noteStore[id]
+	if !exists {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "note not found",
+		})
+		return
+	}
+
+	delete(noteStore, id)
 	w.WriteHeader(http.StatusNoContent)
 }
