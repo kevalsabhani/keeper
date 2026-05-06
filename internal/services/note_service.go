@@ -35,17 +35,22 @@ func (s *NoteService) CreateNote(ctx context.Context, input *models.CreateNoteIn
 }
 
 func (s *NoteService) GetNoteByID(ctx context.Context, id int) (*models.Note, error) {
-	return nil, nil
+	user, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
 }
 
 func (s *NoteService) ListNotes(ctx context.Context) ([]*models.Note, error) {
-	return nil, nil
+	return s.repo.List(ctx)
 }
 
-func (s *NoteService) UpdateNote(ctx context.Context, input *models.CreateNoteInput, id int) error {
-	return nil
+func (s *NoteService) UpdateNote(ctx context.Context, input *models.UpdateNoteInput, id int) error {
+
+	return s.repo.Update(ctx, input, id)
 }
 
 func (s *NoteService) DeleteNote(ctx context.Context, id int) error {
-	return nil
+	return s.repo.Delete(ctx, id)
 }
