@@ -1,117 +1,147 @@
-# Keeper API
+<div align="center">
+  <h1>🛡️ Keeper API</h1>
+  <p><i>A robust, layered RESTful API built in Go for managing Users and Notes.</i></p>
 
-Keeper is a RESTful API built in Go for managing Users and Notes. It follows a layered architecture and uses `go-chi/chi` for routing and `pgx` for PostgreSQL database interactions. The project also includes built-in database migration support using `golang-migrate`.
+  <!-- Badges -->
+  <p>
+    <img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go" alt="Go Version" />
+    <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+    <img src="https://img.shields.io/badge/Chi_Router-blue?style=for-the-badge" alt="Chi Router" />
+  </p>
+</div>
 
-## Features
+<hr />
 
-- **User Management**: Create, Read, Update, and Delete users.
-- **Note Management**: Create, Read, Update, and Delete notes.
-- **Structured Architecture**: Separation of concerns using Handlers, Services, Repositories, and Models.
-- **PostgreSQL Database**: Persistent storage via `pgx` driver.
-- **Database Migrations**: Easily manage schema changes via included Make commands.
-- **Chi Router**: Lightweight and idiomatic routing in Go.
+## ✨ Features
 
-## Prerequisites
+- 👤 **User Management**: Seamlessly Create, Read, Update, and Delete users.
+- 📝 **Note Management**: Organize and manage notes efficiently.
+- 🏗️ **Structured Architecture**: Clean separation of concerns (Handlers, Services, Repositories, Models).
+- 🐘 **PostgreSQL Ready**: Persistent, reliable storage powered by the `pgx` driver.
+- 🔄 **Automated Migrations**: Easy schema management using `golang-migrate` and Make.
+- 🚀 **Chi Router**: Fast, lightweight, and idiomatic routing for Go.
 
-- [Go](https://golang.org/dl/) 1.25+
-- [PostgreSQL](https://www.postgresql.org/download/)
-- [golang-migrate](https://github.com/golang-migrate/migrate) CLI tool (for running migrations manually or via Makefile)
+---
 
-## Getting Started
+## 🛠️ Prerequisites
 
-### 1. Clone the repository
+Ensure you have the following installed before starting:
+- [**Go**](https://golang.org/dl/) (v1.25 or higher)
+- [**PostgreSQL**](https://www.postgresql.org/download/)
+- [**golang-migrate**](https://github.com/golang-migrate/migrate) CLI tool (for database migrations)
+
+---
+
+## 🚀 Getting Started
+
+### 1️⃣ Clone the repository
 
 ```bash
 git clone <repository-url>
 cd keeper
 ```
 
-### 2. Environment Variables
+### 2️⃣ Environment Variables
 
 The application can be configured using the following environment variables:
 
-- `APP_PORT`: The port the API server will run on (default: `3000`).
-- `DB_URL`: The PostgreSQL connection string. Ensure you set this before running migrations or the application.
-  - Example: `postgres://keeperadmin:securepass@localhost:5432/keeperdb?sslmode=disable`
+| Variable | Description | Default | Example |
+| :--- | :--- | :--- | :--- |
+| `APP_PORT` | The port the API server will run on | `3000` | `8080` |
+| `DB_URL` | PostgreSQL connection string | *None* | `postgres://user:pass@localhost:5432/db?sslmode=disable` |
 
-### 3. Database Migrations
+> 💡 **Tip:** Ensure you set `DB_URL` before running migrations or starting the application.
 
-Before running the application, ensure your database schema is up-to-date. You can manage migrations using the `Makefile`.
+### 3️⃣ Database Migrations
 
-Apply all up migrations:
+Before running the application, make sure your database schema is up-to-date using the provided `Makefile`.
+
+**Apply all up migrations:**
 ```bash
 make migrate-up
 ```
 
-Other available migration commands:
+<details>
+<summary><b>Other available migration commands</b></summary>
+
 - `make migrate-down`: Rollback the last applied migration.
 - `make migrate-create name=<migration_name>`: Create a new migration file.
 - `make migrate-force version=<version>`: Force the migration state to a specific version (useful for resolving dirty states).
+</details>
 
-### 4. Running the Application
+### 4️⃣ Running the Application
 
 To build and execute the application:
 ```bash
 make run
 ```
-The server will start at `http://localhost:3000` (or whatever `APP_PORT` is set to).
+> 🌐 The server will start at `http://localhost:3000` (or your configured `APP_PORT`).
 
-To simply build the executable without running:
+If you just want to build the executable:
 ```bash
 make build
 ```
 
-## API Endpoints
+---
+
+## 📡 API Endpoints
 
 The API is mounted under the `/api/v1` prefix.
 
-### General
-- `GET /`: Welcome message.
-- `GET /health`: Health check endpoint.
+### 🟢 General
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/` | Welcome message |
+| `GET` | `/health` | API Health check |
 
-### Users (`/api/v1/users`)
-- `GET /`: Retrieve a list of all users.
-- `POST /`: Create a new user.
-- `GET /{id}`: Retrieve a specific user by ID.
-- `PUT /{id}`: Update an existing user.
-- `DELETE /{id}`: Delete a user.
+### 👥 Users
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/users` | Retrieve a list of all users |
+| `POST` | `/api/v1/users` | Create a new user |
+| `GET` | `/api/v1/users/{id}` | Retrieve a specific user by ID |
+| `PUT` | `/api/v1/users/{id}` | Update an existing user |
+| `DELETE`| `/api/v1/users/{id}` | Delete a user |
 
-### Notes (`/api/v1/notes`)
-- `GET /`: Retrieve a list of all notes.
-- `POST /`: Create a new note.
-- `GET /{id}`: Retrieve a specific note by ID.
-- `PUT /{id}`: Update an existing note.
-- `DELETE /{id}`: Delete a note.
+### 🗒️ Notes
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/notes` | Retrieve a list of all notes |
+| `POST` | `/api/v1/notes` | Create a new note |
+| `GET` | `/api/v1/notes/{id}` | Retrieve a specific note by ID |
+| `PUT` | `/api/v1/notes/{id}` | Update an existing note |
+| `DELETE`| `/api/v1/notes/{id}` | Delete a note |
 
-## Project Structure
+---
 
-```
-.
-├── cmd/
-│   └── api/
-│       └── main.go         # Application entry point and routing setup
+## 📂 Project Structure
+
+```text
+keeper/
+├── cmd/api/                 # Application entry point (main.go)
 ├── internal/
-│   ├── configs/            # Configuration management
-│   ├── database/           # Database connection logic
-│   ├── handlers/           # HTTP request handlers
-│   ├── middlewares/        # Custom HTTP middlewares
-│   ├── models/             # Domain models (User, Note, etc.)
-│   ├── repositories/       # Database interaction logic
-│   └── services/           # Business logic layer
-├── migrations/             # SQL migration files
-├── Makefile                # Build, run, and migration automation
-├── go.mod                  # Go module dependencies
-└── go.sum                  # Go module checksums
+│   ├── configs/             # Configuration management
+│   ├── database/            # Database connection logic
+│   ├── handlers/            # HTTP request handlers
+│   ├── middlewares/         # Custom HTTP middlewares
+│   ├── models/              # Domain models (User, Note, etc.)
+│   ├── repositories/        # Database interaction logic
+│   └── services/            # Business logic layer
+├── migrations/              # SQL migration files
+├── Makefile                 # Build, run, and migration automation
+└── go.mod & go.sum          # Go module dependencies
 ```
 
-## Testing
+---
+
+## 🧪 Testing
 
 To run all unit tests with the race detector enabled:
 ```bash
 make test
 ```
 
-## Cleaning Up
+## 🧹 Cleaning Up
 
 To remove build artifacts generated by the project:
 ```bash
