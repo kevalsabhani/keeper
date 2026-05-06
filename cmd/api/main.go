@@ -58,8 +58,8 @@ func main() {
 	// User routes
 	userRoutes := func(r chi.Router) {
 		r.Post("/", userHandler.Create)
-		r.Get("/", handleListUsers)
-		r.Get("/{id}", handleGetUser)
+		r.Get("/", userHandler.List)
+		r.Get("/{id}", userHandler.GetByID)
 		r.Put("/{id}", handleUpdateUser)
 		r.Delete("/{id}", handleDeleteUser)
 	}
@@ -109,67 +109,6 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 // -----------------  User Handlers  -----------------
-
-func handleCreateUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	var user models.User
-	err := json.NewDecoder(r.Body).Decode(&user)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "invalid request payload",
-		})
-		return
-	}
-
-	newID := len(userStore) + 1
-	userStore[newID] = models.User{
-		ID:    newID,
-		Name:  user.Name,
-		Email: user.Email,
-	}
-
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]any{
-		"data": userStore[newID],
-	})
-}
-
-func handleListUsers(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	userList := make([]models.User, 0, len(userStore))
-	for _, user := range userStore {
-		userList = append(userList, user)
-	}
-	json.NewEncoder(w).Encode(map[string]any{
-		"data": userList,
-	})
-}
-
-func handleGetUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
-	id, err := strconv.Atoi(chi.URLParam(r, "id"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "invalid user ID",
-		})
-		return
-	}
-
-	user, exists := userStore[id]
-	if !exists {
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "user not found",
-		})
-		return
-	}
-
-	json.NewEncoder(w).Encode(map[string]any{
-		"data": user,
-	})
-}
 
 func handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")

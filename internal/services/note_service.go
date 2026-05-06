@@ -33,3 +33,19 @@ func (s *NoteService) CreateNote(ctx context.Context, input *models.CreateNoteIn
 
 	return note, nil
 }
+
+func (s *NoteService) GetNoteByID(ctx context.Context, id int) (*models.Note, error) {
+	return nil, nil
+}
+
+func (s *NoteService) ListNotes(ctx context.Context) ([]*models.Note, error) {
+	return nil, nil
+}
+
+func (s *NoteService) UpdateNote(ctx context.Context, input *models.CreateNoteInput, id int) error {
+	return nil
+}
+
+func (s *NoteService) DeleteNote(ctx context.Context, id int) error {
+	return nil
+}

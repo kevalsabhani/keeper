@@ -21,6 +21,7 @@ func NewNoteHandler(service *services.NoteService) *NoteHandler {
 func (h *NoteHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var input models.CreateNoteInput
 
+	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
@@ -45,5 +46,21 @@ func (h *NoteHandler) Create(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]any{
 		"data": note,
 	})
+
+}
+
+func (h *NoteHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func (h *NoteHandler) List(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func (h *NoteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 }

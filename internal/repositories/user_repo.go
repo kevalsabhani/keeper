@@ -31,11 +31,39 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user *models.User) 
 }
 
 func (r *PostgresUserRepository) GetByID(ctx context.Context, id int) (*models.User, error) {
-	return nil, nil
+	var user models.User
+	query := "SELECT id, name, email from users WHERE id=$1"
+	row := r.db.QueryRow(ctx, query, id)
+
+	if err := row.Scan(&user.ID, &user.Name, &user.Email); err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }
 
 func (r *PostgresUserRepository) List(ctx context.Context) ([]*models.User, error) {
-	return nil, nil
+	var users []*models.User
+	query := "SELECT id, name, email from users"
+	rows, err := r.db.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var user models.User
+
+		if err := rows.Scan(&user.ID, &user.Name, &user.Email); err != nil {
+			return nil, err
+		}
+		users = append(users, &user)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return users, nil
 }
 
 func (r *PostgresUserRepository) Update(ctx context.Context, user *models.User) error {
