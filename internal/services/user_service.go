@@ -49,10 +49,16 @@ func (s *UserService) ListUsers(ctx context.Context) ([]*models.User, error) {
 	return users, nil
 }
 
-func (s *UserService) UpdateUser(ctx context.Context, input *models.CreateUserInput, id int) error {
+func (s *UserService) UpdateUser(ctx context.Context, input *models.UpdateUserInput, id int) error {
+	if err := s.repo.Update(ctx, input, id); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (s *UserService) DeleteUser(ctx context.Context, id int) error {
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return err
+	}
 	return nil
 }

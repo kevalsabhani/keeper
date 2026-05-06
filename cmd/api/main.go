@@ -60,8 +60,8 @@ func main() {
 		r.Post("/", userHandler.Create)
 		r.Get("/", userHandler.List)
 		r.Get("/{id}", userHandler.GetByID)
-		r.Put("/{id}", handleUpdateUser)
-		r.Delete("/{id}", handleDeleteUser)
+		r.Patch("/{id}", userHandler.Update)
+		r.Delete("/{id}", userHandler.Delete)
 	}
 
 	// Note routes
@@ -106,74 +106,6 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
-}
-
-// -----------------  User Handlers  -----------------
-
-func handleUpdateUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	id, err := strconv.Atoi(chi.URLParam(r, "id"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "invalid user ID",
-		})
-		return
-	}
-
-	var payload models.User
-	err = json.NewDecoder(r.Body).Decode(&payload)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "invalid request payload",
-		})
-		return
-	}
-
-	user, exists := userStore[id]
-	if !exists {
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "user not found",
-		})
-		return
-	}
-
-	user.Name = payload.Name
-	user.Email = payload.Email
-
-	userStore[id] = user
-
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "User updated.",
-	})
-}
-
-func handleDeleteUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	id, err := strconv.Atoi(chi.URLParam(r, "id"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "invalid user ID",
-		})
-		return
-	}
-
-	_, exists := userStore[id]
-	if !exists {
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "user not found",
-		})
-		return
-	}
-
-	delete(userStore, id)
-	w.WriteHeader(http.StatusNoContent)
 }
 
 // -----------------  Note Handlers  -----------------

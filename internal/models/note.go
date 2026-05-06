@@ -12,3 +12,8 @@ type CreateNoteInput struct {
 	Title   string
 	Content string
 }
+
+type UpdateNoteInput struct {
+	Title   *string
+	Content *string
+}
