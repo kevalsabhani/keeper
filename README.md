@@ -100,7 +100,7 @@ The API is mounted under the `/api/v1` prefix.
 | `GET` | `/api/v1/users` | Retrieve a list of all users |
 | `POST` | `/api/v1/users` | Create a new user |
 | `GET` | `/api/v1/users/{id}` | Retrieve a specific user by ID |
-| `PUT` | `/api/v1/users/{id}` | Update an existing user |
+| `PATCH` | `/api/v1/users/{id}` | Update an existing user |
 | `DELETE`| `/api/v1/users/{id}` | Delete a user |
 
 ### 🗒️ Notes
@@ -109,7 +109,7 @@ The API is mounted under the `/api/v1` prefix.
 | `GET` | `/api/v1/notes` | Retrieve a list of all notes |
 | `POST` | `/api/v1/notes` | Create a new note |
 | `GET` | `/api/v1/notes/{id}` | Retrieve a specific note by ID |
-| `PUT` | `/api/v1/notes/{id}` | Update an existing note |
+| `PATCH` | `/api/v1/notes/{id}` | Update an existing note |
 | `DELETE`| `/api/v1/notes/{id}` | Delete a note |
 
 ---
