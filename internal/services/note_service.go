@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/kevalsabhani/keeper/internal/models"
 	"github.com/kevalsabhani/keeper/internal/repositories"
 )
@@ -24,7 +25,11 @@ func (s *NoteService) CreateNote(ctx context.Context, input *models.CreateNoteIn
 		Content: input.Content,
 	}
 
-	// Validation
+	// Input alidation
+	validate := validator.New()
+	if err := validate.Struct(input); err != nil {
+		return nil, err
+	}
 
 	// Delegate to repository
 	if err := s.repo.Create(ctx, note); err != nil {
@@ -35,11 +40,7 @@ func (s *NoteService) CreateNote(ctx context.Context, input *models.CreateNoteIn
 }
 
 func (s *NoteService) GetNoteByID(ctx context.Context, id int) (*models.Note, error) {
-	user, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	return user, nil
+	return s.repo.GetByID(ctx, id)
 }
 
 func (s *NoteService) ListNotes(ctx context.Context) ([]*models.Note, error) {
@@ -47,6 +48,11 @@ func (s *NoteService) ListNotes(ctx context.Context) ([]*models.Note, error) {
 }
 
 func (s *NoteService) UpdateNote(ctx context.Context, input *models.UpdateNoteInput, id int) error {
+	//Input validation
+	validate := validator.New()
+	if err := validate.Struct(input); err != nil {
+		return err
+	}
 
 	return s.repo.Update(ctx, input, id)
 }

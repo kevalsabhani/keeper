@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kevalsabhani/keeper/internal/models"
@@ -34,10 +35,10 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user *models.User) 
 
 func (r *PostgresUserRepository) GetByID(ctx context.Context, id int) (*models.User, error) {
 	var user models.User
-	query := "SELECT id, name, email from users WHERE id=$1"
+	query := "SELECT id, name, email, created_at, updated_at from users WHERE id=$1"
 	row := r.db.QueryRow(ctx, query, id)
 
-	if err := row.Scan(&user.ID, &user.Name, &user.Email); err != nil {
+	if err := row.Scan(&user.ID, &user.Name, &user.Email, &user.CreatedAt, &user.UpdatedAt); err != nil {
 		return nil, err
 	}
 
@@ -46,7 +47,7 @@ func (r *PostgresUserRepository) GetByID(ctx context.Context, id int) (*models.U
 
 func (r *PostgresUserRepository) List(ctx context.Context) ([]*models.User, error) {
 	var users []*models.User
-	query := "SELECT id, name, email from users"
+	query := "SELECT id, name, email, created_at, updated_at from users"
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, err
@@ -56,7 +57,7 @@ func (r *PostgresUserRepository) List(ctx context.Context) ([]*models.User, erro
 	for rows.Next() {
 		var user models.User
 
-		if err := rows.Scan(&user.ID, &user.Name, &user.Email); err != nil {
+		if err := rows.Scan(&user.ID, &user.Name, &user.Email, &user.CreatedAt, &user.UpdatedAt); err != nil {
 			return nil, err
 		}
 		users = append(users, &user)
@@ -88,6 +89,11 @@ func (r *PostgresUserRepository) Update(ctx context.Context, user *models.Update
 	if len(setValues) == 0 {
 		return nil
 	}
+
+	setValues = append(setValues, fmt.Sprintf("updated_at=$%d", argIdx))
+	argIdx += 1
+	args = append(args, time.Now())
+
 	args = append(args, id)
 	query := fmt.Sprintf("UPDATE users SET %s WHERE id=$%d", strings.Join(setValues, ", "), argIdx)
 	if _, err := r.db.Exec(ctx, query, args...); err != nil {

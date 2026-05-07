@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/kevalsabhani/keeper/internal/models"
 	"github.com/kevalsabhani/keeper/internal/repositories"
 )
@@ -23,7 +24,11 @@ func (s *UserService) CreateUser(ctx context.Context, input *models.CreateUserIn
 		Email: input.Email,
 	}
 
-	// TODO: Validation
+	// Input validation
+	validate := validator.New()
+	if err := validate.Struct(input); err != nil {
+		return nil, err
+	}
 
 	// Delegate to repository
 	if err := s.repo.Create(ctx, user); err != nil {
@@ -34,31 +39,23 @@ func (s *UserService) CreateUser(ctx context.Context, input *models.CreateUserIn
 }
 
 func (s *UserService) GetUserByID(ctx context.Context, id int) (*models.User, error) {
-	user, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	return user, nil
+	return s.repo.GetByID(ctx, id)
 }
 
 func (s *UserService) ListUsers(ctx context.Context) ([]*models.User, error) {
-	users, err := s.repo.List(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return users, nil
+	return s.repo.List(ctx)
 }
 
 func (s *UserService) UpdateUser(ctx context.Context, input *models.UpdateUserInput, id int) error {
-	if err := s.repo.Update(ctx, input, id); err != nil {
+	// Input validation
+	validate := validator.New()
+	if err := validate.Struct(input); err != nil {
 		return err
 	}
-	return nil
+
+	return s.repo.Update(ctx, input, id)
 }
 
 func (s *UserService) DeleteUser(ctx context.Context, id int) error {
-	if err := s.repo.Delete(ctx, id); err != nil {
-		return err
-	}
-	return nil
+	return s.repo.Delete(ctx, id)
 }

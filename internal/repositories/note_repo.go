@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kevalsabhani/keeper/internal/models"
@@ -36,11 +37,11 @@ func (r *PostgresNoteRepository) Create(ctx context.Context, note *models.Note) 
 func (r *PostgresNoteRepository) GetByID(ctx context.Context, id int) (*models.Note, error) {
 	var note models.Note
 
-	query := "SELECT id, user_id, title, content FROM notes WHERE id=$1"
+	query := "SELECT id, user_id, title, content, created_at, updated_at FROM notes WHERE id=$1"
 
 	row := r.db.QueryRow(ctx, query, id)
 
-	if err := row.Scan(&note.ID, &note.UserID, &note.Title, &note.Content); err != nil {
+	if err := row.Scan(&note.ID, &note.UserID, &note.Title, &note.Content, &note.CreatedAt, &note.UpdatedAt); err != nil {
 		return nil, err
 	}
 	return &note, nil
@@ -49,7 +50,7 @@ func (r *PostgresNoteRepository) GetByID(ctx context.Context, id int) (*models.N
 func (r *PostgresNoteRepository) List(ctx context.Context) ([]*models.Note, error) {
 	var notes []*models.Note
 
-	query := "SELECT id, user_id, title, content FROM notes"
+	query := "SELECT id, user_id, title, content, created_at, updated_at FROM notes"
 
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
@@ -60,7 +61,7 @@ func (r *PostgresNoteRepository) List(ctx context.Context) ([]*models.Note, erro
 	for rows.Next() {
 		var note models.Note
 
-		if err := rows.Scan(&note.ID, &note.UserID, &note.Title, &note.Content); err != nil {
+		if err := rows.Scan(&note.ID, &note.UserID, &note.Title, &note.Content, &note.CreatedAt, &note.UpdatedAt); err != nil {
 			return nil, err
 		}
 
@@ -93,6 +94,10 @@ func (r *PostgresNoteRepository) Update(ctx context.Context, note *models.Update
 	if len(setValues) == 0 {
 		return nil
 	}
+
+	setValues = append(setValues, fmt.Sprintf("updated_at=$%d", argIdx))
+	argIdx += 1
+	args = append(args, time.Now())
 
 	args = append(args, id)
 
