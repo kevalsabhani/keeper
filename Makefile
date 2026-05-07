@@ -1,7 +1,6 @@
 # Variables
 BINARY_NAME=api
 GO_FILES=$(shell find . -name "*.go")
-DB_URL=postgres://keeperadmin:securepass@localhost:5432/keeperdb?sslmode=disable
 MIGRATE_PATH=migrations
 
 .PHONY: build run test clean migrate-up migrate-down migrate-create

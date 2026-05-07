@@ -1,19 +1,19 @@
 package models
 
 type Note struct {
-	ID      int
-	UserID  int
-	Title   string
-	Content string
+	ID      int    `json:"id"`
+	UserID  int    `json:"user_id"`
+	Title   string `json:"title"`
+	Content string `json:"content"`
 }
 
 type CreateNoteInput struct {
-	UserID  int
-	Title   string
-	Content string
+	UserID  int    `json:"user_id"`
+	Title   string `json:"title"`
+	Content string `json:"content"`
 }
 
 type UpdateNoteInput struct {
-	Title   *string
-	Content *string
+	Title   *string `json:"title"`
+	Content *string `json:"content"`
 }

@@ -1,17 +1,28 @@
 package configs
 
-import "os"
+import (
+	"errors"
+	"os"
+)
 
 type Config struct {
 	Port  string
-	DbUrl string
+	DBUrl string
+	Env   string
 }
 
-func Load() *Config {
-	return &Config{
+func Load() (*Config, error) {
+	cfg := &Config{
 		Port:  getEnv("APP_PORT", "3000"),
-		DbUrl: getEnv("DB_URL", ""),
+		DBUrl: getEnv("DB_URL", ""),
+		Env:   getEnv("ENVIRONMENT", "devlopment"),
 	}
+
+	if cfg.DBUrl == "" {
+		return nil, errors.New("DB_URL environment variable is required")
+	}
+
+	return cfg, nil
 }
 
 func getEnv(key, fallback string) string {

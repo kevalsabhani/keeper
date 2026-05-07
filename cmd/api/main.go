@@ -1,35 +1,31 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/kevalsabhani/keeper/internal/configs"
 	"github.com/kevalsabhani/keeper/internal/database"
 	"github.com/kevalsabhani/keeper/internal/handlers"
-	"github.com/kevalsabhani/keeper/internal/models"
 	"github.com/kevalsabhani/keeper/internal/repositories"
 	"github.com/kevalsabhani/keeper/internal/services"
 )
 
-// In-memory stores
-var userStore = map[int]models.User{
-	1: models.User{1, "Alice", "alice@ex.com"},
-	2: models.User{2, "Bob", "bob@ex.com"},
-}
-
-var noteStore = map[int]models.Note{
-	1: models.Note{1, 2, "keeper api key", "fjalkdfjldfjlsjf"},
-	2: models.Note{2, 1, "aws secrets", "kadsfjdslfjlskdfjlksd"},
-}
-
 func main() {
 
-	config := configs.Load()
+	config, err := configs.Load()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 
 	db, err := database.New(config)
 	if err != nil {
@@ -90,8 +86,30 @@ func main() {
 		})
 	})
 
+	server := &http.Server{
+		Addr:         fmt.Sprintf(":%s", config.Port),
+		Handler:      r,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 30 * time.Second,
+	}
+
+	go func() {
+		sigChan := make(chan os.Signal, 1)
+
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+		<-sigChan
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		server.Shutdown(ctx)
+		db.Close()
+	}()
+
 	fmt.Println("Server Running on :3000")
-	http.ListenAndServe(fmt.Sprintf(":%s", config.Port), r)
+	if err = server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatalf("Server error: %v", err)
+	}
 }
 
 func handleHome(w http.ResponseWriter, r *http.Request) {
