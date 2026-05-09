@@ -101,7 +101,7 @@ func (h *NoteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = h.service.DeleteNote(r.Context(), id); err != nil {
-		respondError(w, http.StatusBadRequest, err)
+		respondError(w, http.StatusInternalServerError, err)
 		return
 	}
 
