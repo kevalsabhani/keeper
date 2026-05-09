@@ -2,9 +2,6 @@ package repositories
 
 import (
 	"context"
-	"fmt"
-	"strings"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kevalsabhani/keeper/internal/models"
@@ -14,7 +11,7 @@ type UserRepository interface {
 	Create(context.Context, *models.User) error
 	GetByID(context.Context, int) (*models.User, error)
 	List(context.Context) ([]*models.User, error)
-	Update(context.Context, *models.UpdateUserInput, int) error
+	Update(context.Context, *models.User, int) error
 	Delete(context.Context, int) error
 }
 
@@ -69,34 +66,10 @@ func (r *PostgresUserRepository) List(ctx context.Context) ([]*models.User, erro
 	return users, nil
 }
 
-func (r *PostgresUserRepository) Update(ctx context.Context, user *models.UpdateUserInput, id int) error {
-	setValues := []string{}
-	argIdx := 1
-	args := []interface{}{}
+func (r *PostgresUserRepository) Update(ctx context.Context, user *models.User, id int) error {
 
-	if user.Name != nil {
-		setValues = append(setValues, fmt.Sprintf("name=$%d", argIdx))
-		argIdx += 1
-		args = append(args, user.Name)
-	}
-
-	if user.Email != nil {
-		setValues = append(setValues, fmt.Sprintf("email=$%d", argIdx))
-		argIdx += 1
-		args = append(args, user.Email)
-	}
-
-	if len(setValues) == 0 {
-		return nil
-	}
-
-	setValues = append(setValues, fmt.Sprintf("updated_at=$%d", argIdx))
-	argIdx += 1
-	args = append(args, time.Now())
-
-	args = append(args, id)
-	query := fmt.Sprintf("UPDATE users SET %s WHERE id=$%d", strings.Join(setValues, ", "), argIdx)
-	if _, err := r.db.Exec(ctx, query, args...); err != nil {
+	query := "UPDATE users SET name=$1, email=$2, updated_at=$3 WHERE id=$4"
+	if _, err := r.db.Exec(ctx, query, user.Name, user.Email, user.UpdatedAt, id); err != nil {
 		return err
 	}
 

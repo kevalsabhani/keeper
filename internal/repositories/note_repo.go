@@ -2,9 +2,6 @@ package repositories
 
 import (
 	"context"
-	"fmt"
-	"strings"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kevalsabhani/keeper/internal/models"
@@ -14,7 +11,7 @@ type NoteRepository interface {
 	Create(context.Context, *models.Note) error
 	GetByID(context.Context, int) (*models.Note, error)
 	List(context.Context) ([]*models.Note, error)
-	Update(context.Context, *models.UpdateNoteInput, int) error
+	Update(context.Context, *models.Note, int) error
 	Delete(context.Context, int) error
 }
 
@@ -74,36 +71,11 @@ func (r *PostgresNoteRepository) List(ctx context.Context) ([]*models.Note, erro
 	return notes, nil
 }
 
-func (r *PostgresNoteRepository) Update(ctx context.Context, note *models.UpdateNoteInput, id int) error {
-	setValues := []string{}
-	args := []interface{}{}
-	argIdx := 1
+func (r *PostgresNoteRepository) Update(ctx context.Context, note *models.Note, id int) error {
 
-	if note.Title != nil {
-		setValues = append(setValues, fmt.Sprintf("title=$%d", argIdx))
-		args = append(args, note.Title)
-		argIdx += 1
-	}
+	query := "UPDATE notes SET title=$1, content=$2, updated_at=$3 WHERE id=$4"
 
-	if note.Content != nil {
-		setValues = append(setValues, fmt.Sprintf("content=$%d", argIdx))
-		args = append(args, note.Content)
-		argIdx += 1
-	}
-
-	if len(setValues) == 0 {
-		return nil
-	}
-
-	setValues = append(setValues, fmt.Sprintf("updated_at=$%d", argIdx))
-	argIdx += 1
-	args = append(args, time.Now())
-
-	args = append(args, id)
-
-	query := fmt.Sprintf("UPDATE notes SET %s WHERE id=$%d", strings.Join(setValues, ", "), argIdx)
-
-	if _, err := r.db.Exec(ctx, query, args...); err != nil {
+	if _, err := r.db.Exec(ctx, query, note.Title, note.Content, note.UpdatedAt, id); err != nil {
 		return err
 	}
 	return nil

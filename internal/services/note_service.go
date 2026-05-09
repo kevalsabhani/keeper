@@ -2,8 +2,8 @@ package services
 
 import (
 	"context"
+	"time"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/kevalsabhani/keeper/internal/models"
 	"github.com/kevalsabhani/keeper/internal/repositories"
 )
@@ -26,8 +26,7 @@ func (s *NoteService) CreateNote(ctx context.Context, input *models.CreateNoteIn
 	}
 
 	// Input alidation
-	validate := validator.New()
-	if err := validate.Struct(input); err != nil {
+	if err := note.Validate(); err != nil {
 		return nil, err
 	}
 
@@ -48,15 +47,34 @@ func (s *NoteService) ListNotes(ctx context.Context) ([]*models.Note, error) {
 }
 
 func (s *NoteService) UpdateNote(ctx context.Context, input *models.UpdateNoteInput, id int) error {
-	//Input validation
-	validate := validator.New()
-	if err := validate.Struct(input); err != nil {
+
+	note, err := s.repo.GetByID(ctx, id)
+	if err != nil {
 		return err
 	}
 
-	return s.repo.Update(ctx, input, id)
+	if input.Title != nil {
+		note.Title = *input.Title
+	}
+
+	if input.Content != nil {
+		note.Content = *input.Content
+	}
+
+	//Input validation
+	if err := note.Validate(); err != nil {
+		return err
+	}
+
+	note.UpdatedAt = time.Now()
+
+	return s.repo.Update(ctx, note, id)
 }
 
 func (s *NoteService) DeleteNote(ctx context.Context, id int) error {
+	_, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
 	return s.repo.Delete(ctx, id)
 }
