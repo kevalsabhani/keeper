@@ -2,7 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type errorReponse struct {
@@ -20,6 +23,10 @@ func responseJSON(w http.ResponseWriter, status int, v any) {
 }
 
 func respondError(w http.ResponseWriter, status int, err error) {
+	if errors.Is(err, pgx.ErrNoRows) {
+		responseJSON(w, http.StatusNotFound, errorReponse{Error: err.Error()})
+		return
+	}
 	responseJSON(w, status, errorReponse{Error: err.Error()})
 }
 

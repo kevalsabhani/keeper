@@ -8,8 +8,6 @@ RESET  := $(shell printf "\033[0m")
 .PHONY: help build run dev test test-coverage lint fmt clean docker-build docker-up docker-down migrate-up migrate-down deps
 
 help: ## Show this help message
-	@echo "$(CYAN)Keeper API Makefile$(RESET)"
-	@echo "-------------------"
 	@echo "$(YELLOW)Usage:$(RESET) make $(GREEN)<target>$(RESET)"
 	@echo ""
 	@echo "$(YELLOW)Targets:$(RESET)"
