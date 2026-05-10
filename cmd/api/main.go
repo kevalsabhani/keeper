@@ -15,11 +15,11 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/kevalsabhani/keeper/internal/configs"
 	"github.com/kevalsabhani/keeper/internal/database"
-	"github.com/kevalsabhani/keeper/internal/handlers"
-	"github.com/kevalsabhani/keeper/internal/repositories"
-	"github.com/kevalsabhani/keeper/internal/services"
+	"github.com/kevalsabhani/keeper/internal/di"
 )
 
+// main is the application entry point. It loads config, connects to the
+// database, wires up the router, and starts the HTTP server with graceful shutdown.
 func main() {
 
 	config, err := configs.Load()
@@ -32,13 +32,7 @@ func main() {
 		log.Fatalf("Unable to connect to database: %v", err)
 	}
 
-	userRepo := repositories.NewPostgresUserRepository(db)
-	userService := services.NewUserService(userRepo)
-	userHandler := handlers.NewUserHandler(userService)
-
-	noteRepo := repositories.NewPostgresNoteRepository(db)
-	noteService := services.NewNoteService(noteRepo)
-	noteHandler := handlers.NewNoteHandler(noteService)
+	container := di.New(db)
 
 	r := chi.NewRouter()
 
@@ -52,20 +46,20 @@ func main() {
 
 	// User routes
 	userRoutes := func(r chi.Router) {
-		r.Post("/", userHandler.Create)
-		r.Get("/", userHandler.List)
-		r.Get("/{id}", userHandler.GetByID)
-		r.Patch("/{id}", userHandler.Update)
-		r.Delete("/{id}", userHandler.Delete)
+		r.Post("/", container.UserHandler.Create)
+		r.Get("/", container.UserHandler.List)
+		r.Get("/{id}", container.UserHandler.GetByID)
+		r.Patch("/{id}", container.UserHandler.Update)
+		r.Delete("/{id}", container.UserHandler.Delete)
 	}
 
 	// Note routes
 	noteRoutes := func(r chi.Router) {
-		r.Post("/", noteHandler.Create)
-		r.Get("/", noteHandler.List)
-		r.Get("/{id}", noteHandler.GetByID)
-		r.Patch("/{id}", noteHandler.Update)
-		r.Delete("/{id}", noteHandler.Delete)
+		r.Post("/", container.NoteHandler.Create)
+		r.Get("/", container.NoteHandler.List)
+		r.Get("/{id}", container.NoteHandler.GetByID)
+		r.Patch("/{id}", container.NoteHandler.Update)
+		r.Delete("/{id}", container.NoteHandler.Delete)
 	}
 
 	// v1 routes
@@ -89,10 +83,12 @@ func main() {
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%s", config.Port),
 		Handler:      r,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		ReadTimeout:  time.Duration(config.ReadTimeOut) * time.Second,
+		WriteTimeout: time.Duration(config.WriteTimeOut) * time.Second,
+		IdleTimeout:  time.Duration(config.IdleTimeOut) * time.Second,
 	}
 
+	// Listen for OS signals and trigger graceful shutdown with a 10s drain window.
 	go func() {
 		sigChan := make(chan os.Signal, 1)
 
@@ -114,6 +110,7 @@ func main() {
 	}
 }
 
+// handleHome returns a welcome message and the current API version.
 func handleHome(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
@@ -122,6 +119,7 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleHealth returns a simple status check used by load balancers and monitoring tools.
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})

@@ -6,69 +6,113 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	errpkg "github.com/kevalsabhani/keeper/internal/errors"
 	"github.com/kevalsabhani/keeper/internal/models"
+	"github.com/kevalsabhani/keeper/internal/response"
 	"github.com/kevalsabhani/keeper/internal/services"
 )
 
+// UserHandler handles HTTP requests for user-related endpoints.
 type UserHandler struct {
 	service *services.UserService
 }
 
+// NewUserHandler creates a UserHandler with the given service dependency.
 func NewUserHandler(service *services.UserService) *UserHandler {
 	return &UserHandler{
 		service: service,
 	}
 }
 
+// Create decodes a JSON body and creates a new user. Returns 201 on success.
 func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var input models.CreateUserInput
 
 	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		respondError(w, http.StatusBadRequest, err)
+		response.Error(w, errpkg.ErrInvalidInput)
 		return
 	}
 
 	user, err := h.service.CreateUser(r.Context(), &input)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err)
+
+		response.Error(w, err)
 		return
 	}
 
-	respondSuccess(w, http.StatusCreated, user)
+	response.Success(w, http.StatusCreated, user, nil)
 }
 
+// GetByID fetches a single user by its URL path ID. Returns 404 if not found.
 func (h *UserHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		respondError(w, http.StatusBadRequest, err)
+		response.Error(w, errpkg.ErrInvalidInput)
 		return
 	}
 
 	user, err := h.service.GetUserByID(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err)
+		response.Error(w, err)
 		return
 	}
 
-	respondSuccess(w, http.StatusOK, user)
-
+	response.Success(w, http.StatusOK, user, &response.Meta{
+		CurrentPage: 1,
+		TotalPages:  1,
+		TotalCount:  1,
+	})
 }
 
+// List returns a paginated list of users. Accepts optional `page` and `limit`
+// query params; defaults to page=1, limit=20 (capped at 100).
 func (h *UserHandler) List(w http.ResponseWriter, r *http.Request) {
-	users, err := h.service.ListUsers(r.Context())
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, err)
+
+	var (
+		page    int
+		limit   int
+		listErr error
+	)
+
+	if r.URL.Query().Has("page") {
+		page, listErr = strconv.Atoi(r.URL.Query().Get("page"))
+		if listErr != nil {
+			response.Error(w, errpkg.ErrInvalidInput)
+			return
+		}
+	}
+
+	if page < 1 {
+		page = 1
+	}
+
+	if r.URL.Query().Has("limit") {
+		limit, listErr = strconv.Atoi(r.URL.Query().Get("limit"))
+		if listErr != nil {
+			response.Error(w, errpkg.ErrInvalidInput)
+			return
+		}
+	}
+
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+
+	users, meta, listErr := h.service.ListUsers(r.Context(), page, limit)
+	if listErr != nil {
+		response.Error(w, listErr)
 		return
 	}
 
-	respondSuccess(w, http.StatusOK, users)
+	response.Success(w, http.StatusOK, users, meta)
 }
 
+// Update applies partial changes to an existing user identified by URL path ID.
 func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		respondError(w, http.StatusBadRequest, err)
+		response.Error(w, errpkg.ErrInvalidInput)
 		return
 	}
 
@@ -76,33 +120,30 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 	if err = json.NewDecoder(r.Body).Decode(&input); err != nil {
-		respondError(w, http.StatusBadRequest, err)
+		response.Error(w, errpkg.ErrInvalidInput)
 		return
 	}
 
 	if err = h.service.UpdateUser(r.Context(), &input, id); err != nil {
-		respondError(w, http.StatusInternalServerError, err)
+		response.Error(w, err)
 		return
 	}
 
-	respondSuccess(w, http.StatusOK, map[string]string{
-		"message": "user updated.",
-	})
+	response.Success(w, http.StatusOK, nil, nil)
 }
 
+// Delete removes a user by its URL path ID. Returns 404 if the user does not exist.
 func (h *UserHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		respondError(w, http.StatusBadRequest, err)
+		response.Error(w, errpkg.ErrInvalidInput)
 		return
 	}
 
 	if err = h.service.DeleteUser(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, err)
+		response.Error(w, err)
 		return
 	}
 
-	respondSuccess(w, http.StatusOK, map[string]string{
-		"message": "user deleted.",
-	})
+	response.Success(w, http.StatusOK, nil, nil)
 }

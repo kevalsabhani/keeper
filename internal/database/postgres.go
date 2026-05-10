@@ -9,6 +9,9 @@ import (
 	"github.com/kevalsabhani/keeper/internal/configs"
 )
 
+// New creates and returns a configured PostgreSQL connection pool.
+// It validates the DB URL, applies sensible pool limits, and pings the
+// database to confirm connectivity before returning.
 func New(config *configs.Config) (*pgxpool.Pool, error) {
 
 	poolCfg, err := pgxpool.ParseConfig(config.DBUrl)

@@ -6,71 +6,112 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	errpkg "github.com/kevalsabhani/keeper/internal/errors"
 	"github.com/kevalsabhani/keeper/internal/models"
+	"github.com/kevalsabhani/keeper/internal/response"
 	"github.com/kevalsabhani/keeper/internal/services"
 )
 
+// NoteHandler handles HTTP requests for note-related endpoints.
 type NoteHandler struct {
 	service *services.NoteService
 }
 
+// NewNoteHandler creates a NoteHandler with the given service dependency.
 func NewNoteHandler(service *services.NoteService) *NoteHandler {
 	return &NoteHandler{
 		service: service,
 	}
 }
 
+// Create decodes a JSON body and creates a new note. Returns 201 on success.
 func (h *NoteHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var input models.CreateNoteInput
 
 	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		respondError(w, http.StatusBadRequest, err)
+		response.Error(w, errpkg.ErrInvalidInput)
 		return
 	}
 
 	note, err := h.service.CreateNote(r.Context(), &input)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err)
+		response.Error(w, err)
 		return
 	}
 
-	respondSuccess(w, http.StatusCreated, note)
-
+	response.Success(w, http.StatusCreated, note, nil)
 }
 
+// GetByID fetches a single note by its URL path ID. Returns 404 if not found.
 func (h *NoteHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		respondError(w, http.StatusBadRequest, err)
+		response.Error(w, errpkg.ErrInvalidInput)
 		return
 	}
 
 	note, err := h.service.GetNoteByID(r.Context(), id)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err)
+		response.Error(w, err)
 		return
 	}
 
-	respondSuccess(w, http.StatusOK, note)
-
+	response.Success(w, http.StatusOK, note, &response.Meta{
+		CurrentPage: 1,
+		TotalPages:  1,
+		TotalCount:  1,
+	})
 }
 
+// List returns a paginated list of notes. Accepts optional `page` and `limit`
+// query params; defaults to page=1, limit=20 (capped at 100).
 func (h *NoteHandler) List(w http.ResponseWriter, r *http.Request) {
-	notes, err := h.service.ListNotes(r.Context())
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, err)
+
+	var (
+		page    int
+		limit   int
+		listErr error
+	)
+
+	if r.URL.Query().Has("page") {
+		page, listErr = strconv.Atoi(r.URL.Query().Get("page"))
+		if listErr != nil {
+			response.Error(w, errpkg.ErrInvalidInput)
+			return
+		}
+	}
+
+	if page < 1 {
+		page = 1
+	}
+
+	if r.URL.Query().Has("limit") {
+		limit, listErr = strconv.Atoi(r.URL.Query().Get("limit"))
+		if listErr != nil {
+			response.Error(w, errpkg.ErrInvalidInput)
+			return
+		}
+	}
+
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+
+	notes, meta, listErr := h.service.ListNotes(r.Context(), page, limit)
+	if listErr != nil {
+		response.Error(w, listErr)
 		return
 	}
 
-	respondSuccess(w, http.StatusOK, notes)
-
+	response.Success(w, http.StatusOK, notes, meta)
 }
 
+// Update applies partial changes to an existing note identified by URL path ID.
 func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		respondError(w, http.StatusBadRequest, err)
+		response.Error(w, errpkg.ErrInvalidInput)
 		return
 	}
 
@@ -78,34 +119,30 @@ func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 	if err = json.NewDecoder(r.Body).Decode(&input); err != nil {
-		respondError(w, http.StatusBadRequest, err)
+		response.Error(w, errpkg.ErrInvalidInput)
 		return
 	}
 
 	if err = h.service.UpdateNote(r.Context(), &input, id); err != nil {
-		respondError(w, http.StatusInternalServerError, err)
+		response.Error(w, err)
 		return
 	}
 
-	respondSuccess(w, http.StatusOK, map[string]string{
-		"message": "note updated.",
-	})
-
+	response.Success(w, http.StatusOK, nil, nil)
 }
 
+// Delete removes a note by its URL path ID. Returns 404 if the note does not exist.
 func (h *NoteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		respondError(w, http.StatusBadRequest, err)
+		response.Error(w, errpkg.ErrInvalidInput)
 		return
 	}
 
 	if err = h.service.DeleteNote(r.Context(), id); err != nil {
-		respondError(w, http.StatusInternalServerError, err)
+		response.Error(w, err)
 		return
 	}
 
-	respondSuccess(w, http.StatusOK, map[string]string{
-		"message": "note deleted.",
-	})
+	response.Success(w, http.StatusOK, nil, nil)
 }

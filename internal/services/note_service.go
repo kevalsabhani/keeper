@@ -4,20 +4,25 @@ import (
 	"context"
 	"time"
 
+	errpkg "github.com/kevalsabhani/keeper/internal/errors"
 	"github.com/kevalsabhani/keeper/internal/models"
 	"github.com/kevalsabhani/keeper/internal/repositories"
+	"github.com/kevalsabhani/keeper/internal/response"
 )
 
+// NoteService contains the business logic for note operations.
 type NoteService struct {
 	repo repositories.NoteRepository
 }
 
+// NewNoteService creates a NoteService with the given repository dependency.
 func NewNoteService(repo repositories.NoteRepository) *NoteService {
 	return &NoteService{
 		repo: repo,
 	}
 }
 
+// CreateNote validates the input, then persists a new note to the database.
 func (s *NoteService) CreateNote(ctx context.Context, input *models.CreateNoteInput) (*models.Note, error) {
 	note := &models.Note{
 		UserID:  input.UserID,
@@ -25,32 +30,49 @@ func (s *NoteService) CreateNote(ctx context.Context, input *models.CreateNoteIn
 		Content: input.Content,
 	}
 
-	// Input alidation
+	// Input validation
 	if err := note.Validate(); err != nil {
-		return nil, err
+		return nil, errpkg.FromValidationError(err)
 	}
 
 	// Delegate to repository
 	if err := s.repo.Create(ctx, note); err != nil {
-		return nil, err
+		return nil, errpkg.FromDBError(err)
 	}
 
 	return note, nil
 }
 
+// GetNoteByID retrieves a note by its ID. Returns ErrNotFound if it does not exist.
 func (s *NoteService) GetNoteByID(ctx context.Context, id int) (*models.Note, error) {
-	return s.repo.GetByID(ctx, id)
+	note, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, errpkg.FromDBError(err)
+	}
+
+	return note, nil
 }
 
-func (s *NoteService) ListNotes(ctx context.Context) ([]*models.Note, error) {
-	return s.repo.List(ctx)
+// ListNotes returns a paginated list of notes along with pagination metadata.
+func (s *NoteService) ListNotes(ctx context.Context, page, limit int) ([]*models.Note, *response.Meta, error) {
+	notes, total, err := s.repo.List(ctx, page, limit)
+	if err != nil {
+		return nil, nil, errpkg.FromDBError(err)
+	}
+
+	return notes, &response.Meta{
+		CurrentPage: page,
+		TotalPages:  (total + limit - 1) / limit,
+		TotalCount:  total,
+	}, nil
 }
 
+// UpdateNote applies partial changes to an existing note after re-validating the full record.
 func (s *NoteService) UpdateNote(ctx context.Context, input *models.UpdateNoteInput, id int) error {
 
 	note, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return err
+		return errpkg.FromDBError(err)
 	}
 
 	if input.Title != nil {
@@ -61,20 +83,30 @@ func (s *NoteService) UpdateNote(ctx context.Context, input *models.UpdateNoteIn
 		note.Content = *input.Content
 	}
 
-	//Input validation
+	// Input validation
 	if err := note.Validate(); err != nil {
-		return err
+		return errpkg.FromValidationError(err)
 	}
 
 	note.UpdatedAt = time.Now()
 
-	return s.repo.Update(ctx, note, id)
+	if err = s.repo.Update(ctx, note, id); err != nil {
+		return errpkg.FromDBError(err)
+	}
+
+	return nil
 }
 
+// DeleteNote verifies the note exists, then removes it from the database.
 func (s *NoteService) DeleteNote(ctx context.Context, id int) error {
 	_, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return err
+		return errpkg.FromDBError(err)
 	}
-	return s.repo.Delete(ctx, id)
+
+	if err = s.repo.Delete(ctx, id); err != nil {
+		return errpkg.FromDBError(err)
+	}
+
+	return nil
 }

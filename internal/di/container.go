@@ -7,11 +7,14 @@ import (
 	"github.com/kevalsabhani/keeper/internal/services"
 )
 
+// Container holds all top-level HTTP handlers wired with their dependencies.
 type Container struct {
-	userHandler *handlers.UserHandler
-	noteHandler *handlers.NoteHandler
+	UserHandler *handlers.UserHandler
+	NoteHandler *handlers.NoteHandler
 }
 
+// New builds the full dependency graph — repositories → services → handlers —
+// and returns a Container ready to be used by the router.
 func New(db *pgxpool.Pool) *Container {
 
 	// Setup repositories
@@ -24,7 +27,7 @@ func New(db *pgxpool.Pool) *Container {
 
 	// Setup handlers
 	return &Container{
-		userHandler: handlers.NewUserHandler(userService),
-		noteHandler: handlers.NewNoteHandler(noteService),
+		UserHandler: handlers.NewUserHandler(userService),
+		NoteHandler: handlers.NewNoteHandler(noteService),
 	}
 }
