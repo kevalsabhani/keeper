@@ -8,7 +8,7 @@ import (
 // New creates a Zap logger configured for the given environment.
 // In production it uses JSON encoding with ISO8601 timestamps;
 // in all other environments it uses colored console output for readability.
-func New(env string) (*zap.Logger, error) {
+func New(env string) *zap.Logger {
 	var config zap.Config
 
 	if env == "production" {
@@ -19,5 +19,5 @@ func New(env string) (*zap.Logger, error) {
 		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	}
 
-	return config.Build()
+	return zap.Must(config.Build())
 }

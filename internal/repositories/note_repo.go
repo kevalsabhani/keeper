@@ -22,7 +22,7 @@ type PostgresNoteRepository struct {
 }
 
 // NewPostgresNoteRepository creates a PostgresNoteRepository backed by the given pool.
-func NewPostgresNoteRepository(db *pgxpool.Pool) *PostgresNoteRepository {
+func NewPostgresNoteRepository(db *pgxpool.Pool) NoteRepository {
 	return &PostgresNoteRepository{
 		db: db,
 	}

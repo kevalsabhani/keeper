@@ -8,17 +8,20 @@ import (
 	"github.com/kevalsabhani/keeper/internal/models"
 	"github.com/kevalsabhani/keeper/internal/repositories"
 	"github.com/kevalsabhani/keeper/internal/response"
+	"go.uber.org/zap"
 )
 
 // NoteService contains the business logic for note operations.
 type NoteService struct {
 	repo repositories.NoteRepository
+	log  *zap.Logger
 }
 
 // NewNoteService creates a NoteService with the given repository dependency.
-func NewNoteService(repo repositories.NoteRepository) *NoteService {
+func NewNoteService(repo repositories.NoteRepository, log *zap.Logger) *NoteService {
 	return &NoteService{
 		repo: repo,
+		log:  log,
 	}
 }
 
@@ -32,14 +35,17 @@ func (s *NoteService) CreateNote(ctx context.Context, input *models.CreateNoteIn
 
 	// Input validation
 	if err := note.Validate(); err != nil {
+		s.log.Warn("create note validation failed", zap.Error(err))
 		return nil, errpkg.FromValidationError(err)
 	}
 
 	// Delegate to repository
 	if err := s.repo.Create(ctx, note); err != nil {
+		s.log.Error("failed to insert note into db", zap.Error(err))
 		return nil, errpkg.FromDBError(err)
 	}
 
+	s.log.Info("note created", zap.Int("id", note.ID), zap.Int("user_id", note.UserID))
 	return note, nil
 }
 
@@ -47,6 +53,7 @@ func (s *NoteService) CreateNote(ctx context.Context, input *models.CreateNoteIn
 func (s *NoteService) GetNoteByID(ctx context.Context, id int) (*models.Note, error) {
 	note, err := s.repo.GetByID(ctx, id)
 	if err != nil {
+		s.log.Error("failed to fetch note from db", zap.Int("id", id), zap.Error(err))
 		return nil, errpkg.FromDBError(err)
 	}
 
@@ -57,6 +64,7 @@ func (s *NoteService) GetNoteByID(ctx context.Context, id int) (*models.Note, er
 func (s *NoteService) ListNotes(ctx context.Context, page, limit int) ([]*models.Note, *response.Meta, error) {
 	notes, total, err := s.repo.List(ctx, page, limit)
 	if err != nil {
+		s.log.Error("failed to fetch notes from db", zap.Int("page", page), zap.Int("limit", limit), zap.Error(err))
 		return nil, nil, errpkg.FromDBError(err)
 	}
 
@@ -72,6 +80,7 @@ func (s *NoteService) UpdateNote(ctx context.Context, input *models.UpdateNoteIn
 
 	note, err := s.repo.GetByID(ctx, id)
 	if err != nil {
+		s.log.Error("failed to fetch note for update", zap.Int("id", id), zap.Error(err))
 		return errpkg.FromDBError(err)
 	}
 
@@ -85,15 +94,18 @@ func (s *NoteService) UpdateNote(ctx context.Context, input *models.UpdateNoteIn
 
 	// Input validation
 	if err := note.Validate(); err != nil {
+		s.log.Warn("update note validation failed", zap.Int("id", id), zap.Error(err))
 		return errpkg.FromValidationError(err)
 	}
 
 	note.UpdatedAt = time.Now()
 
 	if err = s.repo.Update(ctx, note, id); err != nil {
+		s.log.Error("failed to update note in db", zap.Int("id", id), zap.Error(err))
 		return errpkg.FromDBError(err)
 	}
 
+	s.log.Info("note updated", zap.Int("id", id))
 	return nil
 }
 
@@ -101,12 +113,15 @@ func (s *NoteService) UpdateNote(ctx context.Context, input *models.UpdateNoteIn
 func (s *NoteService) DeleteNote(ctx context.Context, id int) error {
 	_, err := s.repo.GetByID(ctx, id)
 	if err != nil {
+		s.log.Error("failed to fetch note for deletion", zap.Int("id", id), zap.Error(err))
 		return errpkg.FromDBError(err)
 	}
 
 	if err = s.repo.Delete(ctx, id); err != nil {
+		s.log.Error("failed to delete note from db", zap.Int("id", id), zap.Error(err))
 		return errpkg.FromDBError(err)
 	}
 
+	s.log.Info("note deleted", zap.Int("id", id))
 	return nil
 }

@@ -10,17 +10,20 @@ import (
 	"github.com/kevalsabhani/keeper/internal/models"
 	"github.com/kevalsabhani/keeper/internal/response"
 	"github.com/kevalsabhani/keeper/internal/services"
+	"go.uber.org/zap"
 )
 
 // NoteHandler handles HTTP requests for note-related endpoints.
 type NoteHandler struct {
 	service *services.NoteService
+	log     *zap.Logger
 }
 
 // NewNoteHandler creates a NoteHandler with the given service dependency.
-func NewNoteHandler(service *services.NoteService) *NoteHandler {
+func NewNoteHandler(service *services.NoteService, log *zap.Logger) *NoteHandler {
 	return &NoteHandler{
 		service: service,
+		log:     log,
 	}
 }
 
@@ -30,12 +33,14 @@ func (h *NoteHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.log.Warn("failed to decode create note request body", zap.Error(err))
 		response.Error(w, errpkg.ErrInvalidInput)
 		return
 	}
 
 	note, err := h.service.CreateNote(r.Context(), &input)
 	if err != nil {
+		h.log.Error("failed to create note", zap.Error(err))
 		response.Error(w, err)
 		return
 	}
@@ -47,12 +52,14 @@ func (h *NoteHandler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *NoteHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
+		h.log.Warn("invalid note id in path", zap.String("raw_id", chi.URLParam(r, "id")))
 		response.Error(w, errpkg.ErrInvalidInput)
 		return
 	}
 
 	note, err := h.service.GetNoteByID(r.Context(), id)
 	if err != nil {
+		h.log.Error("failed to get note", zap.Int("id", id), zap.Error(err))
 		response.Error(w, err)
 		return
 	}
@@ -77,6 +84,7 @@ func (h *NoteHandler) List(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Has("page") {
 		page, listErr = strconv.Atoi(r.URL.Query().Get("page"))
 		if listErr != nil {
+			h.log.Warn("invalid page query parameter", zap.String("value", r.URL.Query().Get("page")))
 			response.Error(w, errpkg.ErrInvalidInput)
 			return
 		}
@@ -89,6 +97,7 @@ func (h *NoteHandler) List(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Has("limit") {
 		limit, listErr = strconv.Atoi(r.URL.Query().Get("limit"))
 		if listErr != nil {
+			h.log.Warn("invalid limit query parameter", zap.String("value", r.URL.Query().Get("limit")))
 			response.Error(w, errpkg.ErrInvalidInput)
 			return
 		}
@@ -100,6 +109,7 @@ func (h *NoteHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	notes, meta, listErr := h.service.ListNotes(r.Context(), page, limit)
 	if listErr != nil {
+		h.log.Error("failed to list notes", zap.Int("page", page), zap.Int("limit", limit), zap.Error(listErr))
 		response.Error(w, listErr)
 		return
 	}
@@ -111,6 +121,7 @@ func (h *NoteHandler) List(w http.ResponseWriter, r *http.Request) {
 func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
+		h.log.Warn("invalid note id in path", zap.String("raw_id", chi.URLParam(r, "id")))
 		response.Error(w, errpkg.ErrInvalidInput)
 		return
 	}
@@ -119,11 +130,13 @@ func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 	if err = json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.log.Warn("failed to decode update note request body", zap.Int("id", id), zap.Error(err))
 		response.Error(w, errpkg.ErrInvalidInput)
 		return
 	}
 
 	if err = h.service.UpdateNote(r.Context(), &input, id); err != nil {
+		h.log.Error("failed to update note", zap.Int("id", id), zap.Error(err))
 		response.Error(w, err)
 		return
 	}
@@ -135,11 +148,13 @@ func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *NoteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
+		h.log.Warn("invalid note id in path", zap.String("raw_id", chi.URLParam(r, "id")))
 		response.Error(w, errpkg.ErrInvalidInput)
 		return
 	}
 
 	if err = h.service.DeleteNote(r.Context(), id); err != nil {
+		h.log.Error("failed to delete note", zap.Int("id", id), zap.Error(err))
 		response.Error(w, err)
 		return
 	}

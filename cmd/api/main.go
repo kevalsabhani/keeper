@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,23 +15,32 @@ import (
 	"github.com/kevalsabhani/keeper/internal/configs"
 	"github.com/kevalsabhani/keeper/internal/database"
 	"github.com/kevalsabhani/keeper/internal/di"
+	zaplog "github.com/kevalsabhani/keeper/pkg/log"
+	"go.uber.org/zap"
 )
 
 // main is the application entry point. It loads config, connects to the
 // database, wires up the router, and starts the HTTP server with graceful shutdown.
 func main() {
 
+	// Init zap logger
+	log := zaplog.New(os.Getenv("ENVIRONMENT"))
+	zap.ReplaceGlobals(log)
+	defer log.Sync()
+
 	config, err := configs.Load()
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Fatal("Failed to load config", zap.Error(err))
 	}
+	log.Info("Config loaded.")
 
 	db, err := database.New(config)
 	if err != nil {
-		log.Fatalf("Unable to connect to database: %v", err)
+		log.Fatal("Failed to connect to database", zap.Error(err))
 	}
+	log.Info("Database connnected.")
 
-	container := di.New(db)
+	container := di.New(db, log)
 
 	r := chi.NewRouter()
 
@@ -72,14 +80,6 @@ func main() {
 		r.Route("/v1", v1Routes)
 	})
 
-	// 404 handler
-	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "endpoint not found",
-		})
-	})
-
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%s", config.Port),
 		Handler:      r,
@@ -94,19 +94,21 @@ func main() {
 
 		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 		<-sigChan
+		log.Info("shutdown signal received, draining connections")
 
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
 		if err = server.Shutdown(ctx); err != nil {
-			// TODO: log error and continue
+			log.Error("server shutdown error", zap.Error(err))
 		}
 		db.Close()
+		log.Info("database connection closed")
 	}()
 
-	fmt.Println("Server Running on :3000")
+	log.Info("server started", zap.String("addr", fmt.Sprintf(":%s", config.Port)))
 	if err = server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("Server error: %v", err)
+		log.Fatal("Failed to run server", zap.Error(err))
 	}
 }
 

@@ -8,17 +8,20 @@ import (
 	"github.com/kevalsabhani/keeper/internal/models"
 	"github.com/kevalsabhani/keeper/internal/repositories"
 	"github.com/kevalsabhani/keeper/internal/response"
+	"go.uber.org/zap"
 )
 
 // UserService contains the business logic for user operations.
 type UserService struct {
 	repo repositories.UserRepository
+	log  *zap.Logger
 }
 
 // NewUserService creates a UserService with the given repository dependency.
-func NewUserService(repo repositories.UserRepository) *UserService {
+func NewUserService(repo repositories.UserRepository, log *zap.Logger) *UserService {
 	return &UserService{
 		repo: repo,
+		log:  log,
 	}
 }
 
@@ -31,14 +34,17 @@ func (s *UserService) CreateUser(ctx context.Context, input *models.CreateUserIn
 
 	// Input validation
 	if err := user.Validate(); err != nil {
+		s.log.Warn("create user validation failed", zap.Error(err))
 		return nil, errpkg.FromValidationError(err)
 	}
 
 	// Delegate to repository
 	if err := s.repo.Create(ctx, user); err != nil {
+		s.log.Error("failed to insert user into db", zap.Error(err))
 		return nil, errpkg.FromDBError(err)
 	}
 
+	s.log.Info("user created", zap.Int("id", user.ID), zap.String("email", user.Email))
 	return user, nil
 }
 
@@ -46,6 +52,7 @@ func (s *UserService) CreateUser(ctx context.Context, input *models.CreateUserIn
 func (s *UserService) GetUserByID(ctx context.Context, id int) (*models.User, error) {
 	user, err := s.repo.GetByID(ctx, id)
 	if err != nil {
+		s.log.Error("failed to fetch user from db", zap.Int("id", id), zap.Error(err))
 		return nil, errpkg.FromDBError(err)
 	}
 	return user, nil
@@ -55,6 +62,7 @@ func (s *UserService) GetUserByID(ctx context.Context, id int) (*models.User, er
 func (s *UserService) ListUsers(ctx context.Context, page, limit int) ([]*models.User, *response.Meta, error) {
 	users, total, err := s.repo.List(ctx, page, limit)
 	if err != nil {
+		s.log.Error("failed to fetch users from db", zap.Int("page", page), zap.Int("limit", limit), zap.Error(err))
 		return nil, nil, errpkg.FromDBError(err)
 	}
 
@@ -70,6 +78,7 @@ func (s *UserService) UpdateUser(ctx context.Context, input *models.UpdateUserIn
 
 	user, err := s.repo.GetByID(ctx, id)
 	if err != nil {
+		s.log.Error("failed to fetch user for update", zap.Int("id", id), zap.Error(err))
 		return errpkg.FromDBError(err)
 	}
 
@@ -83,15 +92,18 @@ func (s *UserService) UpdateUser(ctx context.Context, input *models.UpdateUserIn
 
 	// Input validation
 	if err := user.Validate(); err != nil {
+		s.log.Warn("update user validation failed", zap.Int("id", id), zap.Error(err))
 		return errpkg.FromValidationError(err)
 	}
 
 	user.UpdatedAt = time.Now()
 
 	if err = s.repo.Update(ctx, user, id); err != nil {
+		s.log.Error("failed to update user in db", zap.Int("id", id), zap.Error(err))
 		return errpkg.FromDBError(err)
 	}
 
+	s.log.Info("user updated", zap.Int("id", id))
 	return nil
 }
 
@@ -99,12 +111,15 @@ func (s *UserService) UpdateUser(ctx context.Context, input *models.UpdateUserIn
 func (s *UserService) DeleteUser(ctx context.Context, id int) error {
 	_, err := s.repo.GetByID(ctx, id)
 	if err != nil {
+		s.log.Error("failed to fetch user for deletion", zap.Int("id", id), zap.Error(err))
 		return errpkg.FromDBError(err)
 	}
 
 	if err = s.repo.Delete(ctx, id); err != nil {
+		s.log.Error("failed to delete user from db", zap.Int("id", id), zap.Error(err))
 		return errpkg.FromDBError(err)
 	}
 
+	s.log.Info("user deleted", zap.Int("id", id))
 	return nil
 }

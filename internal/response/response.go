@@ -7,6 +7,7 @@ import (
 	"reflect"
 
 	errpkg "github.com/kevalsabhani/keeper/internal/errors"
+	"go.uber.org/zap"
 )
 
 // Response is the standard JSON envelope returned by all API endpoints.
@@ -35,12 +36,16 @@ type Meta struct {
 // JSON sets Content-Type to application/json, writes the given status code,
 // and encodes resp as JSON into the response body.
 func JSON(w http.ResponseWriter, status int, resp *Response) {
+
+	respBytes, err := json.Marshal(resp)
+	if err != nil {
+		zap.L().Error("failed to marshal response", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		// TODO: log error and continue
-	}
+	w.Write(respBytes)
 }
 
 // Success writes a successful JSON response. If data is a struct (or pointer to struct),
