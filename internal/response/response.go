@@ -7,15 +7,16 @@ import (
 	"reflect"
 
 	errpkg "github.com/kevalsabhani/keeper/internal/errors"
+	"github.com/kevalsabhani/keeper/internal/models"
 	"go.uber.org/zap"
 )
 
 // Response is the standard JSON envelope returned by all API endpoints.
 type Response struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   *APIError   `json:"error,omitempty"`
-	Meta    *Meta       `json:"meta,omitempty"`
+	Success bool               `json:"success"`
+	Data    interface{}        `json:"data,omitempty"`
+	Error   *APIError          `json:"error,omitempty"`
+	Meta    *models.Pagination `json:"meta,omitempty"`
 }
 
 // APIError carries a machine-readable error code, a human-readable message,
@@ -50,7 +51,7 @@ func JSON(w http.ResponseWriter, status int, resp *Response) {
 
 // Success writes a successful JSON response. If data is a struct (or pointer to struct),
 // it is automatically wrapped in a slice so the data field is always an array.
-func Success(w http.ResponseWriter, status int, data interface{}, meta *Meta) {
+func Success(w http.ResponseWriter, status int, data interface{}, meta *models.Pagination) {
 	if data != nil {
 		v := reflect.Indirect(reflect.ValueOf(data))
 		if v.Kind() == reflect.Struct {

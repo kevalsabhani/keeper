@@ -7,7 +7,6 @@ import (
 	errpkg "github.com/kevalsabhani/keeper/internal/errors"
 	"github.com/kevalsabhani/keeper/internal/models"
 	"github.com/kevalsabhani/keeper/internal/repositories"
-	"github.com/kevalsabhani/keeper/internal/response"
 	"go.uber.org/zap"
 )
 
@@ -61,18 +60,14 @@ func (s *NoteService) GetNoteByID(ctx context.Context, id int) (*models.Note, er
 }
 
 // ListNotes returns a paginated list of notes along with pagination metadata.
-func (s *NoteService) ListNotes(ctx context.Context, page, limit int) ([]*models.Note, *response.Meta, error) {
+func (s *NoteService) ListNotes(ctx context.Context, page, limit int) ([]*models.Note, *models.Pagination, error) {
 	notes, total, err := s.repo.List(ctx, page, limit)
 	if err != nil {
 		s.log.Error("failed to fetch notes from db", zap.Int("page", page), zap.Int("limit", limit), zap.Error(err))
 		return nil, nil, errpkg.FromDBError(err)
 	}
 
-	return notes, &response.Meta{
-		CurrentPage: page,
-		TotalPages:  (total + limit - 1) / limit,
-		TotalCount:  total,
-	}, nil
+	return notes, models.NewPagination(page, limit, total), nil
 }
 
 // UpdateNote applies partial changes to an existing note after re-validating the full record.

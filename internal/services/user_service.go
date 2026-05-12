@@ -7,7 +7,6 @@ import (
 	errpkg "github.com/kevalsabhani/keeper/internal/errors"
 	"github.com/kevalsabhani/keeper/internal/models"
 	"github.com/kevalsabhani/keeper/internal/repositories"
-	"github.com/kevalsabhani/keeper/internal/response"
 	"go.uber.org/zap"
 )
 
@@ -59,18 +58,14 @@ func (s *UserService) GetUserByID(ctx context.Context, id int) (*models.User, er
 }
 
 // ListUsers returns a paginated list of users along with pagination metadata.
-func (s *UserService) ListUsers(ctx context.Context, page, limit int) ([]*models.User, *response.Meta, error) {
+func (s *UserService) ListUsers(ctx context.Context, page, limit int) ([]*models.User, *models.Pagination, error) {
 	users, total, err := s.repo.List(ctx, page, limit)
 	if err != nil {
 		s.log.Error("failed to fetch users from db", zap.Int("page", page), zap.Int("limit", limit), zap.Error(err))
 		return nil, nil, errpkg.FromDBError(err)
 	}
 
-	return users, &response.Meta{
-		CurrentPage: page,
-		TotalPages:  (total + limit - 1) / limit,
-		TotalCount:  total,
-	}, nil
+	return users, models.NewPagination(page, limit, total), nil
 }
 
 // UpdateUser applies partial changes to an existing user after re-validating the full record.

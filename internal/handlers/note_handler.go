@@ -64,11 +64,7 @@ func (h *NoteHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.Success(w, http.StatusOK, note, &response.Meta{
-		CurrentPage: 1,
-		TotalPages:  1,
-		TotalCount:  1,
-	})
+	response.Success(w, http.StatusOK, note, models.NewPagination(1, 1, 1))
 }
 
 // List returns a paginated list of notes. Accepts optional `page` and `limit`
